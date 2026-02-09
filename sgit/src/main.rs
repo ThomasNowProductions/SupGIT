@@ -17,7 +17,13 @@ fn run() -> Result<()> {
         SgitCommand::Init => run_git(&["init"])?,
         SgitCommand::Stage { targets } => stage_targets(&targets)?,
         SgitCommand::Unstage { targets } => restore_stage(&targets)?,
-        SgitCommand::Status => run_git(&["status"])?,
+        SgitCommand::Status { short } => {
+            if short {
+                run_git(&["status", "-sb"])?;
+            } else {
+                run_git(&["status"])?;
+            }
+        }
         SgitCommand::Log { short } => {
             if short {
                 run_git(&["log", "--oneline", "--decorate", "-n", "20"])?;
@@ -36,10 +42,20 @@ fn run() -> Result<()> {
         }
         SgitCommand::Branch => run_git(&["branch"])?,
         SgitCommand::Push { remote, branch } => {
-            let remote = remote.unwrap_or_else(|| "origin".to_string());
-            let branch =
-                branch.unwrap_or_else(|| current_branch().unwrap_or_else(|_| "HEAD".to_string()));
-            run_git(&["push", remote.as_str(), branch.as_str()])?;
+            if remote.is_none() && branch.is_some() {
+                bail!("cannot specify --branch without --remote");
+            }
+
+            let mut args_owned = vec!["push".to_string()];
+            if let Some(remote) = remote {
+                args_owned.push(remote);
+                if let Some(branch) = branch {
+                    args_owned.push(branch);
+                }
+            }
+
+            let args_refs: Vec<&str> = args_owned.iter().map(String::as_str).collect();
+            run_git(&args_refs)?;
         }
         SgitCommand::Pull { remote, branch } => {
             let mut args_owned = vec!["pull".to_string()];
@@ -89,9 +105,7 @@ fn run() -> Result<()> {
             run_git(&commit_args)?;
 
             if push {
-                let remote = "origin";
-                let branch = current_branch().unwrap_or_else(|_| "HEAD".to_string());
-                run_git(&["push", remote, branch.as_str()])?;
+                run_git(&["push"])?;
             }
 
             if should_stage_untracked {
@@ -129,7 +143,11 @@ enum SgitCommand {
         targets: Vec<String>,
     },
     /// Show the current status
-    Status,
+    Status {
+        /// Short status output like `git status -sb`
+        #[arg(long)]
+        short: bool,
+    },
     /// Commit with a simple interface
     Commit {
         /// Commit message
