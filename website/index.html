@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="SGIT (Simple Git) is a lightning-fast Rust wrapper around the Git CLI that exposes streamlined workflows for everyday Git tasks."
+    />
+    <title>SGIT — Simple Git, faster</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap">
+        <div class="mast">
+          <div class="brand">
+            <span class="mark" aria-hidden="true">$</span>
+            <div class="wordmark">
+              <div class="name">sgit</div>
+              <div class="tag">Simple Git workflows</div>
+            </div>
+          </div>
+
+          <nav class="nav" aria-label="Page">
+            <a href="#install">Install</a>
+            <a href="#usage">Usage</a>
+            <a href="#commands">Commands</a>
+            <a href="#explain">Explain</a>
+          </nav>
+        </div>
+
+        <div class="hero" id="content">
+          <h1>Git, without the ceremony.</h1>
+          <p>
+            SGIT is a small Rust wrapper around the Git CLI. It keeps Git’s
+            defaults and config intact, but offers a few sharp, everyday commands
+            with nicer ergonomics.
+          </p>
+
+          <div class="hero-grid">
+            <div class="card">
+              <div class="card-title">Quick start</div>
+              <pre class="code" aria-label="Quick start commands"><code>sgit init
+sgit stage .
+sgit commit -m "first commit" --push</code></pre>
+            </div>
+
+            <div class="card">
+              <div class="card-title">What it is</div>
+              <ul class="list">
+                <li>Fast pass-through to <span class="mono">git</span></li>
+                <li>Fewer flags for common flows</li>
+                <li>Predictable behavior (no surprises)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="cta">
+            <a class="button" href="#install">Install locally</a>
+            <a class="button ghost" href="#commands">Browse commands</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="site-main">
+      <div class="wrap">
+        <section class="section" id="install">
+          <h2>Install</h2>
+          <p>
+            Build the binary and put it on your <span class="mono">PATH</span>.
+            The repo includes convenience scripts.
+          </p>
+
+          <div class="grid">
+            <div class="panel">
+              <div class="panel-title">Build</div>
+              <pre class="code"><code>cd sgit
+cargo build --release</code></pre>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Install / uninstall</div>
+              <pre class="code"><code>./install.sh
+./uninstall.sh</code></pre>
+              <p class="fine">
+                Set <span class="mono">SGIT_INSTALL_DIR</span> to install
+                somewhere other than <span class="mono">$HOME/.local/bin</span>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="usage">
+          <h2>Usage</h2>
+          <p>
+            SGIT sticks to the shape of Git: a command, then options. Most
+            commands forward directly to Git with a slightly smoother default.
+          </p>
+          <pre class="code"><code>sgit &lt;command&gt; [options]</code></pre>
+        </section>
+
+        <section class="section" id="commands">
+          <h2>Commands</h2>
+          <div class="table" role="table" aria-label="SGIT commands">
+            <div class="row head" role="row">
+              <div class="cell" role="columnheader">Command</div>
+              <div class="cell" role="columnheader">What it does</div>
+            </div>
+
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">init</div>
+              <div class="cell" role="cell">Runs <span class="mono">git init</span></div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">stage [path...]</div>
+              <div class="cell" role="cell">Adds files (defaults to <span class="mono">.</span>)</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">unstage [path...]</div>
+              <div class="cell" role="cell">Runs <span class="mono">git restore --staged</span></div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">status [--short]</div>
+              <div class="cell" role="cell">Shows <span class="mono">git status</span> (or <span class="mono">-sb</span>)</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">log [--short]</div>
+              <div class="cell" role="cell">Compact or detailed log</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">diff [path] [--staged]</div>
+              <div class="cell" role="cell">Diff working tree (or staged snapshot)</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">branch</div>
+              <div class="cell" role="cell">Lists local branches</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">push [remote] [branch]</div>
+              <div class="cell" role="cell">Pushes using Git defaults; override if needed</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">pull [remote] [branch]</div>
+              <div class="cell" role="cell">Pulls with optional remote/branch</div>
+            </div>
+            <div class="row" role="row">
+              <div class="cell mono" role="cell">commit ...</div>
+              <div class="cell" role="cell">Commit helpers: stage, push, amend</div>
+            </div>
+          </div>
+
+          <div class="callout" aria-label="Commit options">
+            <div class="callout-title">Commit helpers</div>
+            <p class="fine">
+              SGIT can stage before committing, and optionally push right after.
+              It still respects Git’s upstream settings and <span class="mono">push.default</span>.
+            </p>
+            <pre class="code"><code>sgit commit -m "message" [--all | --unstaged | --staged] [--push] [--amend]</code></pre>
+          </div>
+        </section>
+
+        <section class="section" id="explain">
+          <h2>Explain mode</h2>
+          <p>
+            Add <span class="mono">--explain</span> to get a friendly,
+            beginner-style explanation of the command and common options,
+            instead of running it.
+          </p>
+          <pre class="code"><code>sgit status --explain
+sgit --explain</code></pre>
+        </section>
+
+        <footer class="site-footer">
+          <div class="footer-line">
+            <span class="mono">sgit</span> is intentionally small. If a command
+            isn’t here, use <span class="mono">git</span>.
+          </div>
+          <div class="footer-line fine">
+            Built with Rust. Ships as a single binary.
+          </div>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>
+
