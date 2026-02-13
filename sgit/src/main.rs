@@ -31,7 +31,7 @@ fn run() -> Result<()> {
             all,
             tracked,
         } => stage_targets(&targets, all, tracked)?,
-        SgitCommand::Unstage { targets } => restore_stage(&targets)?,
+        SgitCommand::Unstage { targets, all } => restore_stage(&targets, all)?,
         SgitCommand::Status { short } => {
             if short {
                 run_git(&["status", "-sb"])?;
@@ -197,10 +197,13 @@ enum SgitCommand {
         #[arg(long)]
         tracked: bool,
     },
-    /// Unstage files or reset staged changes
+    /// Unstage files or reset staged changes (interactive if no targets/flags provided)
     Unstage {
-        #[arg(value_name = "PATH", default_value = ".")]
+        #[arg(value_name = "PATH")]
         targets: Vec<String>,
+        /// Unstage all staged files
+        #[arg(long)]
+        all: bool,
     },
     /// Show the current status
     Status {
@@ -346,19 +349,84 @@ fn get_unstaged_files() -> Result<Vec<String>> {
     Ok(files)
 }
 
-fn restore_stage(targets: &[String]) -> Result<()> {
-    let target_args: Vec<&str> = if targets.is_empty() {
-        vec!["."]
+fn restore_stage(targets: &[String], all: bool) -> Result<()> {
+    let is_interactive = targets.is_empty() && !all;
+
+    if is_interactive {
+        let selection = Select::new()
+            .with_prompt("What would you like to unstage?")
+            .items(&["All staged files", "Specific files"])
+            .default(0)
+            .interact()?;
+
+        match selection {
+            0 => run_git(&["restore", "--staged", "."]),
+            1 => {
+                let files = get_staged_files()?;
+                if files.is_empty() {
+                    println!("No staged files to unstage.");
+                    return Ok(());
+                }
+                let selected = dialoguer::MultiSelect::new()
+                    .with_prompt("Select files to unstage")
+                    .items(&files)
+                    .interact()?;
+
+                if selected.is_empty() {
+                    println!("No files selected.");
+                    return Ok(());
+                }
+
+                let mut args = vec!["restore".to_string(), "--staged".to_string()];
+                for idx in selected {
+                    args.push(files[idx].clone());
+                }
+                let args_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+                run_git(&args_refs)
+            }
+            _ => Ok(()),
+        }
+    } else if all {
+        run_git(&["restore", "--staged", "."])
     } else {
-        targets.iter().map(String::as_str).collect()
-    };
+        let target_args: Vec<&str> = if targets.is_empty() {
+            vec!["."]
+        } else {
+            targets.iter().map(String::as_str).collect()
+        };
 
-    let mut args = Vec::with_capacity(2 + target_args.len());
-    args.push("restore");
-    args.push("--staged");
-    args.extend(target_args);
+        let mut args = Vec::with_capacity(2 + target_args.len());
+        args.push("restore");
+        args.push("--staged");
+        args.extend(target_args);
 
-    run_git(&args)
+        run_git(&args)
+    }
+}
+
+fn get_staged_files() -> Result<Vec<String>> {
+    let output = StdCommand::new("git")
+        .args(["status", "--porcelain"])
+        .output()
+        .context("running git status --porcelain")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let files: Vec<String> = stdout
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty() {
+                return None;
+            }
+            let status = line.chars().next()?;
+            if status == 'M' || status == 'A' || status == 'D' || status == 'R' || status == 'C' {
+                return Some(line[3..].to_string());
+            }
+            None
+        })
+        .collect();
+
+    Ok(files)
 }
 
 fn run_git(args: &[&str]) -> Result<()> {
@@ -379,7 +447,7 @@ fn print_explanations() {
     println!();
     println!("  init    – initialize a Git repository (runs `git init`).");
     println!("  stage   – add files to the staging area (interactive, or use --all/--tracked).");
-    println!("  unstage – remove staged files safely (runs `git restore --staged`).");
+    println!("  unstage – remove staged files safely (interactive, or use --all).");
     println!("  status  – show what is staged vs unstaged (`--short` uses `git status -sb`).");
     println!("  log     – view history (`--short` shows compact entries).");
     println!("  diff    – compare working changes (`--staged` shows what will be committed).");
