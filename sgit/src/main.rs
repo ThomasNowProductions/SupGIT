@@ -2,7 +2,7 @@ use std::process::Command as StdCommand;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
-use dialoguer::{Input, Select};
+use dialoguer::{Confirm, Input, Select};
 
 fn main() {
     if let Err(err) = run() {
@@ -89,32 +89,36 @@ fn run() -> Result<()> {
             amend,
             no_verify,
         } => {
-            let (all, staged, unstaged, commit_msg) =
-                if message.is_none() && !all && !staged && !unstaged {
-                    let scope = Select::new()
-                        .with_prompt("What would you like to commit?")
-                        .items(&[
-                            "Staged changes",
-                            "Unstaged changes",
-                            "All changes",
-                            "Custom",
-                        ])
-                        .default(0)
-                        .interact()?;
+            let is_interactive = message.is_none() && !all && !staged && !unstaged;
+            let (all, staged, unstaged, commit_msg, push) = if is_interactive {
+                let scope = Select::new()
+                    .with_prompt("What would you like to commit?")
+                    .items(&[
+                        "Staged changes",
+                        "Unstaged changes",
+                        "All changes",
+                        "Custom",
+                    ])
+                    .default(0)
+                    .interact()?;
 
-                    let (all, staged, unstaged) = match scope {
-                        0 => (false, true, false),
-                        1 => (false, false, true),
-                        2 => (true, false, false),
-                        _ => (false, false, false),
-                    };
-
-                    let msg: String = Input::new().with_prompt("Commit message").interact()?;
-                    (all, staged, unstaged, msg)
-                } else {
-                    let msg = message.unwrap_or_default();
-                    (all, staged, unstaged, msg)
+                let (all, staged, unstaged) = match scope {
+                    0 => (false, true, false),
+                    1 => (false, false, true),
+                    2 => (true, false, false),
+                    _ => (false, false, false),
                 };
+
+                let msg: String = Input::new().with_prompt("Commit message").interact()?;
+                let should_push = Confirm::new()
+                    .with_prompt("Push after committing?")
+                    .default(false)
+                    .interact()?;
+                (all, staged, unstaged, msg, should_push)
+            } else {
+                let msg = message.unwrap_or_default();
+                (all, staged, unstaged, msg, push)
+            };
 
             if commit_msg.is_empty() {
                 bail!("commit message cannot be empty");
