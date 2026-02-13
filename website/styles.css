@@ -181,6 +181,46 @@ a:hover {
   text-align: center;
 }
 
+.install-box {
+  position: relative;
+  max-width: 540px;
+  margin: 28px auto 0;
+}
+
+.install-box .code {
+  margin: 0;
+  padding-right: 48px;
+  text-align: center;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #e8e4db;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+}
+
+.copy-btn:active {
+  opacity: 0.85;
+}
+
+.copy-btn.copied {
+  opacity: 1;
+  color: #22c55e;
+}
+
 .hero-grid {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
