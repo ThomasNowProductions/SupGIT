@@ -5,6 +5,23 @@ REPO="ThomasNowProductions/SGIT"
 INSTALL_DIR="${SGIT_INSTALL_DIR:-${HOME}/.local/bin}"
 VERSION="${SGIT_VERSION:-latest}"
 
+check_deps() {
+    for dep in curl; do
+        command -v "$dep" >/dev/null 2>&1 || { printf "ERROR: '%s' is required but not installed\n" "$dep"; exit 1; }
+    done
+    if [ "$(uname -s)" = "MINGW"* ] || [ "$(uname -s)" = "MSYS"* ] || [ "$(uname -s)" = "CYGWIN"* ]; then
+        command -v unzip >/dev/null 2>&1 || { printf "ERROR: 'unzip' is required but not installed\n"; exit 1; }
+    else
+        command -v tar >/dev/null 2>&1 || { printf "ERROR: 'tar' is required but not installed\n"; exit 1; }
+    fi
+}
+
+check_writable() {
+    mkdir -p "$1" 2>/dev/null || return 1
+    [ -w "$1" ] || return 1
+    return 0
+}
+
 detect_platform() {
     OS="$(uname -s)"
     ARCH="$(uname -m)"
@@ -39,6 +56,14 @@ detect_platform() {
 status() {
     printf "\r\033[K%s" "$1"
 }
+
+check_deps
+
+if ! check_writable "$INSTALL_DIR"; then
+    printf "ERROR: Cannot write to %s\n" "$INSTALL_DIR"
+    printf "       Try: SGIT_INSTALL_DIR=/path/to/writable/dir ./install.sh\n"
+    exit 1
+fi
 
 PLATFORM="$(detect_platform)"
 if [ "$PLATFORM" = "unsupported" ]; then
@@ -90,23 +115,25 @@ else
     tar -xzf "$ARCHIVE"
 fi
 
-if [ -f "sgit" ]; then
-    BINARY="sgit"
-elif [ -f "sgit.exe" ]; then
-    BINARY="sgit.exe"
-else
+BINARY="$(find . -maxdepth 2 -name "sgit" -o -name "sgit.exe" 2>/dev/null | head -1)"
+if [ -z "$BINARY" ]; then
     printf "\r\033[KERROR: Binary not found in archive\n"
     exit 1
 fi
 
 status "Installing SGIT to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
-if install -Dm755 "$BINARY" "$INSTALL_DIR/sgit" 2>/dev/null; then
-    printf "\r\033[K🎉 SGIT $VERSION is installed 🎉\n"
-else
-    printf "\r\033[KInstall failed; try setting SGIT_INSTALL_DIR to a writable directory\n"
+cp "$BINARY" "$INSTALL_DIR/sgit"
+chmod 755 "$INSTALL_DIR/sgit"
+
+status "Verifying installation..."
+if ! "$INSTALL_DIR/sgit" --version >/dev/null 2>&1; then
+    printf "\r\033[KERROR: Installed binary failed to run\n"
+    printf "       This may indicate an architecture mismatch\n"
     exit 1
 fi
+
+printf "\r\033[K🎉 SGIT $VERSION is installed 🎉\n"
 
 case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;
