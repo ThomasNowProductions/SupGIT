@@ -1,8 +1,5 @@
-#!/usr/bin/env bash
-if [ -z "${BASH_VERSION:-}" ]; then
-  exec bash "$0" "$@"
-fi
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 REPO="ThomasNowProductions/SGIT"
 INSTALL_DIR="${SGIT_INSTALL_DIR:-${HOME}/.local/bin}"
