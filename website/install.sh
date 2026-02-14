@@ -48,7 +48,7 @@ fi
 
 if [ "$VERSION" = "latest" ]; then
     status "Fetching latest release..."
-    VERSION="$(curl -sSL "https://api.github.com/repos/$REPO/releases/latest" | grep -m1 '"tag_name"' | sed 's/.*"//; s/".*//')"
+    VERSION="$(curl -sSL "https://api.github.com/repos/$REPO/releases/latest" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//; s/".*//')"
 fi
 
 if [ "$(uname -s)" = "MINGW"* ] || [ "$(uname -s)" = "MSYS"* ] || [ "$(uname -s)" = "CYGWIN"* ]; then
