@@ -26,6 +26,51 @@ pub fn get_repo_root() -> Result<String> {
     }
 }
 
+pub struct PorcelainStatus {
+    entries: Vec<(String, String)>,
+}
+
+impl PorcelainStatus {
+    pub fn parse() -> Result<Self> {
+        let output = StdCommand::new("git")
+            .args(["status", "--porcelain"])
+            .output()
+            .context("running git status --porcelain")?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let entries: Vec<(String, String)> = stdout
+            .lines()
+            .filter_map(|line| {
+                if line.len() < 4 {
+                    return None;
+                }
+                let status = line[..2].to_string();
+                let path = line[3..].to_string();
+                Some((status, path))
+            })
+            .collect();
+
+        Ok(Self { entries })
+    }
+
+    pub fn unstaged_files(&self) -> Vec<&str> {
+        self.entries
+            .iter()
+            .filter(|(status, _)| {
+                let xy: Vec<char> = status.chars().collect();
+                let x = xy.first().copied().unwrap_or(' ');
+                let y = xy.get(1).copied().unwrap_or(' ');
+                x == ' ' && y != ' ' && y != '?'
+            })
+            .map(|(_, path)| path.as_str())
+            .collect()
+    }
+
+    pub fn all_uncommitted_files(&self) -> Vec<&str> {
+        self.entries.iter().map(|(_, path)| path.as_str()).collect()
+    }
+}
+
 pub fn get_porcelain_lines() -> Result<Vec<(String, String)>> {
     let output = StdCommand::new("git")
         .args(["status", "--porcelain"])

@@ -12,8 +12,7 @@ pub fn create_branch(branch_name: &str) -> Result<()> {
     if branch_name.contains(|c: char| c.is_whitespace()) {
         bail!("branch name cannot contain whitespace");
     }
-    run_git_silent(&["branch", branch_name])?;
-    run_git_silent(&["checkout", branch_name])?;
+    run_git_silent(&["checkout", "-b", branch_name])?;
     println!("✓ Created and switched to branch '{}'", branch_name);
     Ok(())
 }
@@ -48,8 +47,7 @@ pub fn run_branch_interactive() -> Result<()> {
         }
 
         let normalized_name = branch_name.trim().replace(' ', "-");
-        run_git_silent(&["branch", &normalized_name])?;
-        run_git_silent(&["checkout", &normalized_name])?;
+        run_git_silent(&["checkout", "-b", &normalized_name])?;
         println!("✓ Created and switched to branch '{}'", normalized_name);
     } else {
         let selected_branch = &branches[selection];

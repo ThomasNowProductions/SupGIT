@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 use dialoguer::{Confirm, Input, Select};
 
 use crate::git::{run_git_quiet, run_git_silent};
-use crate::status::{get_all_uncommitted_files, get_current_branch, get_repo_root};
+use crate::status::{get_current_branch, get_repo_root, PorcelainStatus};
 
 pub fn run_commit(
     message: Option<String>,
@@ -37,14 +37,16 @@ pub fn run_commit(
 
         let mut custom_files: Vec<String> = Vec::new();
         if scope == 3 {
-            let files = get_all_uncommitted_files()?;
+            let status = PorcelainStatus::parse()?;
+            let files: Vec<&str> = status.all_uncommitted_files();
             if files.is_empty() {
                 println!("No files to commit.");
                 return Ok(());
             }
+            let files_owned: Vec<String> = files.iter().map(|s| s.to_string()).collect();
             let selected = dialoguer::MultiSelect::new()
                 .with_prompt("Select files to stage")
-                .items(&files)
+                .items(&files_owned)
                 .interact()?;
 
             if selected.is_empty() {
@@ -53,7 +55,7 @@ pub fn run_commit(
             }
 
             for idx in selected {
-                custom_files.push(files[idx].clone());
+                custom_files.push(files_owned[idx].clone());
             }
         }
 

@@ -2,7 +2,7 @@ use anyhow::Result;
 use dialoguer::{MultiSelect, Select};
 
 use crate::git::run_git_silent;
-use crate::status::{get_repo_root, get_unstaged_files};
+use crate::status::{get_repo_root, PorcelainStatus};
 
 pub fn stage_targets(targets: &[String], all: bool, tracked: bool) -> Result<()> {
     let is_interactive = targets.is_empty() && !all && !tracked;
@@ -26,14 +26,16 @@ pub fn stage_targets(targets: &[String], all: bool, tracked: bool) -> Result<()>
                 Ok(())
             }
             2 => {
-                let files = get_unstaged_files()?;
+                let status = PorcelainStatus::parse()?;
+                let files: Vec<&str> = status.unstaged_files();
                 if files.is_empty() {
                     println!("No unstaged files to stage.");
                     return Ok(());
                 }
+                let files_owned: Vec<String> = files.iter().map(|s| s.to_string()).collect();
                 let selected = MultiSelect::new()
                     .with_prompt("Select files to stage")
-                    .items(&files)
+                    .items(&files_owned)
                     .interact()?;
 
                 if selected.is_empty() {
@@ -45,7 +47,7 @@ pub fn stage_targets(targets: &[String], all: bool, tracked: bool) -> Result<()>
                 let mut args = vec!["add".to_string()];
                 let count = selected.len();
                 for idx in selected {
-                    args.push(files[idx].clone());
+                    args.push(files_owned[idx].clone());
                 }
                 let args_refs: Vec<&str> = args.iter().map(String::as_str).collect();
                 crate::git::run_git_in_dir_silent(&args_refs, &repo_root)?;
