@@ -6,7 +6,7 @@ mod stage;
 mod sync;
 mod unstage;
 
-pub use branch::{create_branch, run_branch_interactive};
+pub use branch::{create_branch, delete_branch, run_branch_interactive};
 pub use clone::run_clone;
 pub use commit::run_commit;
 pub use reset::run_reset;

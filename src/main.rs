@@ -7,8 +7,8 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use cli::{Cli, SgitCommand};
 use commands::{
-    create_branch, restore_stage, run_branch_interactive, run_clone, run_commit, run_pull,
-    run_push, run_reset, run_sync, stage_targets,
+    create_branch, delete_branch, restore_stage, run_branch_interactive, run_clone, run_commit,
+    run_pull, run_push, run_reset, run_sync, stage_targets,
 };
 use git::{check_in_repo, run_git, run_git_silent};
 
@@ -79,9 +79,11 @@ fn run() -> Result<()> {
             tracked,
             untracked,
         } => run_reset(all, staged, unstaged, tracked, untracked)?,
-        SgitCommand::Branch { create } => {
+        SgitCommand::Branch { create, delete } => {
             if let Some(branch_name) = create {
                 create_branch(&branch_name)?;
+            } else if let Some(branch_name) = delete {
+                delete_branch(&branch_name)?;
             } else {
                 run_branch_interactive()?;
             }
@@ -123,7 +125,7 @@ fn print_explanations() {
     println!("  status  – show what is staged vs unstaged (`--short` uses `git status -sb`).");
     println!("  log     – view history (`--short` shows compact entries).");
     println!("  diff    – compare working changes (`--staged` shows what will be committed).");
-    println!("  branch  – list and checkout branches (interactive); use -c <name> to create a new branch.");
+    println!("  branch  – list and checkout branches (interactive); use -c <name> to create, -d <name> to delete a branch.");
     println!("  reset   – discard changes (interactive, or use --all/--staged/--unstaged/--tracked/--untracked).");
     println!(
         "  push    – send commits to your remote (uses Git's defaults unless you pass `--remote`/`--branch`)."

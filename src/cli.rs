@@ -76,6 +76,8 @@ pub enum SgitCommand {
     Branch {
         #[arg(short, long)]
         create: Option<String>,
+        #[arg(short, long)]
+        delete: Option<String>,
     },
     Push {
         remote: Option<String>,
