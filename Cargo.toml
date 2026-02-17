@@ -1,8 +1,8 @@
 [package]
 name = "supgit"
-version = "0.2.0"
-edition = "2024"
-description = "A simple Git CLI wrapper for common Git operations"
+version = "0.3.0"
+edition = "2026"
+description = "SupGit, the GIT CLI simplified."
 license = "AGPL-3.0-only"
 repository = "https://github.com/ThomasNowProductions/SupGIT"
 homepage = "https://github.com/ThomasNowProductions/SupGIT"
