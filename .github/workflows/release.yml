@@ -61,14 +61,33 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf ${{ matrix.artifact }}.tar.gz supgit
+          BIN_NAME=""
+          if [ -f "supgit" ]; then
+            BIN_NAME="supgit"
+          elif [ -f "sgit" ]; then
+            BIN_NAME="sgit"
+          else
+            echo "Expected supgit or sgit binary, found:"
+            ls -la
+            exit 1
+          fi
+          tar -czvf ${{ matrix.artifact }}.tar.gz "$BIN_NAME"
           mv ${{ matrix.artifact }}.tar.gz ../../..
 
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../${{ matrix.artifact }}.zip supgit.exe
+          if (Test-Path "supgit.exe") {
+            $bin = "supgit.exe"
+          } elseif (Test-Path "sgit.exe") {
+            $bin = "sgit.exe"
+          } else {
+            Write-Host "Expected supgit.exe or sgit.exe binary, found:"
+            Get-ChildItem
+            exit 1
+          }
+          7z a ../../../${{ matrix.artifact }}.zip $bin
 
       - name: Upload release asset (Unix)
         if: matrix.os != 'windows-latest'
@@ -83,4 +102,3 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: ${{ matrix.artifact }}.zip
-
