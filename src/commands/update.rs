@@ -3,9 +3,6 @@ use std::env;
 use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const INSTALL_URL: &str = "https://supgit.vercel.app/install.sh";
-const GITHUB_API_URL: &str =
-    "https://api.github.com/repos/ThomasNowProductions/SupGIT/releases/latest";
 const UPDATE_CHECK_INTERVAL_SECS: u64 = 24 * 60 * 60;
 
 fn get_current_version() -> &'static str {
@@ -35,63 +32,6 @@ fn record_update_check() {
     }
 }
 
-fn fetch_latest_version() -> Result<String> {
-    let output = Command::new("curl")
-        .args([
-            "-fsSL",
-            "-H",
-            "Accept: application/vnd.github.v3+json",
-            GITHUB_API_URL,
-        ])
-        .output()
-        .context("Failed to fetch release info from GitHub")?;
-
-    if !output.status.success() {
-        bail!(
-            "Failed to fetch release info: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    let response = String::from_utf8_lossy(&output.stdout);
-    for line in response.lines() {
-        let line = line.trim();
-        if line.starts_with("\"tag_name\":") {
-            let version = line
-                .split(':')
-                .nth(1)
-                .unwrap_or("")
-                .trim()
-                .trim_matches('"')
-                .trim_start_matches('v')
-                .trim_matches(',');
-            return Ok(version.to_string());
-        }
-    }
-
-    bail!("Could not parse version from GitHub response")
-}
-
-fn version_is_newer(latest: &str, current: &str) -> bool {
-    let parse_version =
-        |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse().ok()).collect() };
-
-    let latest_parts = parse_version(latest);
-    let current_parts = parse_version(current);
-
-    for i in 0..latest_parts.len().max(current_parts.len()) {
-        let l = latest_parts.get(i).unwrap_or(&0);
-        let c = current_parts.get(i).unwrap_or(&0);
-        if l > c {
-            return true;
-        }
-        if l < c {
-            return false;
-        }
-    }
-    false
-}
-
 pub fn check_and_auto_update() -> Result<()> {
     if env::var("SupGIT_SKIP_UPDATE_CHECK").is_ok() {
         return Ok(());
@@ -103,67 +43,33 @@ pub fn check_and_auto_update() -> Result<()> {
         return Ok(());
     }
 
-    let latest = match fetch_latest_version() {
-        Ok(v) => v,
-        Err(_) => return Ok(()),
-    };
-
     record_update_check();
 
-    let current = get_current_version();
-    if !version_is_newer(&latest, current) {
-        return Ok(());
-    }
-
-    println!("Updating supgit from v{} to v{}...", current, latest);
-
-    let mut sh = Command::new("sh");
-    sh.arg("-c")
-        .arg("curl -fsSL https://supgit.vercel.app/install.sh | sh");
-
-    let status = sh.status().context("Failed to run installer")?;
+    let status = Command::new("cargo")
+        .args(["install", "supgit"])
+        .status()
+        .context("Failed to run cargo install")?;
 
     if status.success() {
-        println!("✓ Updated to v{}", latest);
+        println!("✓ Checked for updates");
     }
 
     Ok(())
 }
 
-pub fn run_self_update(target_version: Option<&str>) -> Result<()> {
+pub fn run_self_update(_target_version: Option<&str>) -> Result<()> {
     println!("Current version: v{}", get_current_version());
-    println!("Running installer...");
+    println!("Updating via cargo...");
 
-    let curl = Command::new("curl")
-        .args(["-fsSL", INSTALL_URL])
-        .output()
-        .context("Failed to run curl. Is curl installed?")?;
-
-    if !curl.status.success() {
-        bail!(
-            "Failed to download install script: {}",
-            String::from_utf8_lossy(&curl.stderr)
-        );
-    }
-
-    let mut sh = Command::new("sh");
-    sh.arg("-c")
-        .arg("curl -fsSL https://supgit.vercel.app/install.sh | sh");
-
-    if let Some(v) = target_version {
-        let version = if v.starts_with('v') {
-            v.to_string()
-        } else {
-            format!("v{}", v)
-        };
-        sh.env("SupGIT_VERSION", version);
-    }
-
-    let status = sh.status().context("Failed to run installer")?;
+    let status = Command::new("cargo")
+        .args(["install", "supgit", "--force"])
+        .status()
+        .context("Failed to run cargo install")?;
 
     if !status.success() {
-        bail!("Installer failed with exit code {:?}", status.code());
+        bail!("cargo install failed with exit code {:?}", status.code());
     }
 
+    println!("✓ Update complete");
     Ok(())
 }

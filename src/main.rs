@@ -38,7 +38,7 @@ fn run() -> Result<()> {
 
     if !matches!(
         command,
-        SupgitCommand::Init | SupgitCommand::Clone { .. } | SupgitCommand::Update { .. }
+        SupgitCommand::Init | SupgitCommand::Clone { .. } | SupgitCommand::Update
     ) {
         check_in_repo()?;
     }
@@ -116,8 +116,8 @@ fn run() -> Result<()> {
         SupgitCommand::Clone { url, directory } => {
             run_clone(&url, directory.as_deref())?;
         }
-        SupgitCommand::Update { target_version } => {
-            run_self_update(target_version.as_deref())?;
+        SupgitCommand::Update => {
+            run_self_update(None)?;
         }
     }
 
@@ -144,5 +144,5 @@ fn print_explanations() {
     );
     println!("  sync    – fetch, pull, and push in one command with graceful error handling.");
     println!("  clone   – clone a repository and print a cd command to enter it.");
-    println!("  update  – update supgit to the latest version from GitHub releases.");
+    println!("  update  – update supgit to the latest version via cargo.");
 }

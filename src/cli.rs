@@ -97,8 +97,5 @@ pub enum SupgitCommand {
         #[arg(value_name = "DIR")]
         directory: Option<String>,
     },
-    Update {
-        #[arg(long, value_name = "VERSION")]
-        target_version: Option<String>,
-    },
+    Update,
 }
