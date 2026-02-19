@@ -57,6 +57,8 @@ pub fn run_pull(remote: Option<String>, branch: Option<String>) -> Result<()> {
 
 pub fn run_sync(remote: Option<&str>, branch: Option<&str>) -> Result<()> {
     let remote_name = remote.unwrap_or("origin");
+    let current_branch = get_current_branch().unwrap_or_default();
+    let is_main = current_branch == "main" || current_branch == "master";
 
     println!("→ Fetching from {}...", remote_name);
     let fetch_result = run_git_quiet(&["fetch", remote_name]);
@@ -70,6 +72,28 @@ pub fn run_sync(remote: Option<&str>, branch: Option<&str>) -> Result<()> {
         eprintln!("  Continuing with local state...");
     } else {
         println!("✓ Fetch complete");
+    }
+
+    if !is_main {
+        println!("→ Merging main into {}...", current_branch);
+        let merge_result = run_git_quiet(&["merge", "main"]);
+        if let Err(e) = merge_result {
+            let err_str = e.to_string();
+            let is_conflict = err_str.to_lowercase().contains("conflict")
+                || err_str.contains("merge failed")
+                || err_str.contains("Automatic merge failed");
+            if is_conflict {
+                eprintln!("✗ Merge failed due to conflicts");
+                eprintln!("  Resolve conflicts manually:");
+                eprintln!("    1. Edit conflicting files (marked with <<<<<<<)");
+                eprintln!("    2. Run 'supgit stage .' to stage resolved files");
+                eprintln!("    3. Run 'supgit commit' to complete the merge");
+                return Err(e);
+            }
+            eprintln!("⚠ Merge failed: {}", e);
+        } else {
+            println!("✓ Merge complete");
+        }
     }
 
     println!("→ Pulling changes...");
