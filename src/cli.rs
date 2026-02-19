@@ -98,4 +98,12 @@ pub enum SupgitCommand {
         directory: Option<String>,
     },
     Update,
+    Alias {
+        #[arg(long)]
+        dry_run: bool,
+    },
+    Unalias {
+        #[arg(long)]
+        dry_run: bool,
+    },
 }

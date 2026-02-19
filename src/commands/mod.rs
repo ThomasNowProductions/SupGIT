@@ -1,3 +1,4 @@
+mod alias;
 mod branch;
 mod clone;
 mod commit;
@@ -7,6 +8,7 @@ mod sync;
 mod unstage;
 mod update;
 
+pub use alias::{run_alias, run_unalias};
 pub use branch::{create_branch, delete_branch, run_branch_interactive};
 pub use clone::run_clone;
 pub use commit::run_commit;

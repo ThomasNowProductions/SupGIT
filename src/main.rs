@@ -7,8 +7,9 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use cli::{Cli, SupgitCommand};
 use commands::{
-    check_and_auto_update, create_branch, delete_branch, restore_stage, run_branch_interactive,
-    run_clone, run_commit, run_pull, run_push, run_reset, run_self_update, run_sync, stage_targets,
+    check_and_auto_update, create_branch, delete_branch, restore_stage, run_alias,
+    run_branch_interactive, run_clone, run_commit, run_pull, run_push, run_reset, run_self_update,
+    run_sync, run_unalias, stage_targets,
 };
 use git::{check_in_repo, run_git, run_git_silent};
 
@@ -38,7 +39,11 @@ fn run() -> Result<()> {
 
     if !matches!(
         command,
-        SupgitCommand::Init | SupgitCommand::Clone { .. } | SupgitCommand::Update
+        SupgitCommand::Init
+            | SupgitCommand::Clone { .. }
+            | SupgitCommand::Update
+            | SupgitCommand::Alias { .. }
+            | SupgitCommand::Unalias { .. }
     ) {
         check_in_repo()?;
     }
@@ -119,6 +124,12 @@ fn run() -> Result<()> {
         SupgitCommand::Update => {
             run_self_update(None)?;
         }
+        SupgitCommand::Alias { dry_run } => {
+            run_alias(dry_run)?;
+        }
+        SupgitCommand::Unalias { dry_run } => {
+            run_unalias(dry_run)?;
+        }
     }
 
     Ok(())
@@ -143,6 +154,8 @@ fn print_explanations() {
         "  commit  – make commits; `--all` stages everything, `--unstaged` stages only modified tracked files, `--push` runs `git push`, `--amend` rewrites the last commit, and `--no-verify` skips hooks."
     );
     println!("  sync    – fetch, pull, and push in one command with graceful error handling.");
-    println!("  clone   – clone a repository and print a cd command to enter it.");
+    println!("  clone   – clone a repository and automatically change into it.");
+    println!("  alias   – add 'git' alias pointing to supgit in your shell config.");
+    println!("  unalias – remove the 'git' alias from your shell config.");
     println!("  update  – update supgit to the latest version via cargo.");
 }
