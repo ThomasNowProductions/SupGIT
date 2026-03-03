@@ -456,6 +456,7 @@ dependencies = [
  "clap",
  "dialoguer",
  "dirs",
+ "log",
  "strsim",
 ]
 

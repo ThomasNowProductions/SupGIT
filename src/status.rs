@@ -1,55 +1,72 @@
-use std::cell::RefCell;
 use std::process::Command as StdCommand;
+use std::sync::{LazyLock, RwLock};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 
 use crate::git::NOT_IN_REPO_HINT;
 
-thread_local! {
-    static PORCELAIN_CACHE: RefCell<Option<Vec<(String, String)>>> = const { RefCell::new(None) };
-}
+type PorcelainCache = RwLock<Option<Vec<(String, String)>>>;
+type RepoRootCache = RwLock<Option<String>>;
+
+static PORCELAIN_CACHE: LazyLock<PorcelainCache> = LazyLock::new(|| RwLock::new(None));
+static REPO_ROOT_CACHE: LazyLock<RepoRootCache> = LazyLock::new(|| RwLock::new(None));
 
 fn get_porcelain_lines_cached() -> Result<Vec<(String, String)>> {
-    PORCELAIN_CACHE.with(|cache| {
-        if let Some(ref entries) = *cache.borrow() {
-            return Ok(entries.clone());
-        }
+    // Acquire write lock up front to avoid TOCTOU race
+    // Use into_inner() to recover from poisoning
+    let mut guard = PORCELAIN_CACHE.write().unwrap_or_else(|e| e.into_inner());
 
-        let output = StdCommand::new("git")
-            .args(["status", "--porcelain"])
-            .output()
-            .context("running git status --porcelain")?;
+    if let Some(ref entries) = *guard {
+        return Ok(entries.clone());
+    }
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            bail!("git status --porcelain failed: {}", stderr.trim());
-        }
+    let output = StdCommand::new("git")
+        .args(["status", "--porcelain"])
+        .output()
+        .context("running git status --porcelain")?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let entries: Vec<(String, String)> = stdout
-            .lines()
-            .filter_map(|line| {
-                if line.len() < 4 {
-                    return None;
-                }
-                let status = line[..2].to_string();
-                let path = line[3..].to_string();
-                Some((status, path))
-            })
-            .collect();
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("git status --porcelain failed: {}", stderr.trim());
+    }
 
-        *cache.borrow_mut() = Some(entries.clone());
-        Ok(entries)
-    })
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let entries: Vec<(String, String)> = stdout
+        .lines()
+        .filter_map(|line| {
+            if line.len() < 4 {
+                return None;
+            }
+            let status = line[..2].to_string();
+            let path = line[3..].to_string();
+            Some((status, path))
+        })
+        .collect();
+
+    *guard = Some(entries.clone());
+    Ok(entries)
 }
 
 pub fn invalidate_porcelain_cache() {
-    PORCELAIN_CACHE.with(|cache| {
-        *cache.borrow_mut() = None;
-    });
+    let mut guard = PORCELAIN_CACHE.write().unwrap_or_else(|e| e.into_inner());
+    *guard = None;
+}
+
+#[allow(dead_code)]
+pub fn invalidate_repo_root_cache() {
+    let mut guard = REPO_ROOT_CACHE.write().unwrap_or_else(|e| e.into_inner());
+    *guard = None;
 }
 
 pub fn get_repo_root() -> Result<String> {
+    // Acquire write lock up front to avoid TOCTOU race
+    // Use into_inner() to recover from poisoning
+    let mut guard = REPO_ROOT_CACHE.write().unwrap_or_else(|e| e.into_inner());
+
+    if let Some(ref cached) = *guard {
+        return Ok(cached.clone());
+    }
+
     let output = StdCommand::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .output()
@@ -61,6 +78,7 @@ pub fn get_repo_root() -> Result<String> {
         if path.is_empty() {
             bail!("{}", NOT_IN_REPO_HINT);
         }
+        *guard = Some(path.clone());
         Ok(path)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);

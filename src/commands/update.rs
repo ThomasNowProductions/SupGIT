@@ -1,9 +1,11 @@
 use anyhow::{Context, Result, bail};
+use log::debug;
 use std::env;
+use std::io::IsTerminal;
 use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const UPDATE_CHECK_INTERVAL_SECS: u64 = 24 * 60 * 60;
+const UPDATE_CHECK_INTERVAL_SECS: u64 = 3 * 24 * 60 * 60;
 
 fn get_current_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -37,39 +39,46 @@ pub fn check_and_auto_update() {
         return;
     }
 
-    if let Some(elapsed) = get_time_since_last_check()
-        && elapsed.as_secs() < UPDATE_CHECK_INTERVAL_SECS
-    {
+    if !std::io::stdout().is_terminal() {
         return;
     }
 
-    record_update_check();
-
-    if let Err(e) = (|| -> Result<()> {
-        let output = Command::new("cargo")
-            .args(["install", "supgit", "--dry-run"])
-            .output()
-            .context("failed to check for updates - is cargo installed?")?;
-
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let combined = format!("{}{}", stdout, stderr);
-
-            if combined.contains("Installing supgit") || combined.contains("Would install") {
-                println!("Update available for supgit");
-            } else if combined.contains("is already installed")
-                || combined.contains("Already up to date")
-            {
-                println!("No updates available");
-            } else {
-                println!("✓ Checked for updates");
-            }
+    let handle = std::thread::spawn(|| {
+        if let Some(elapsed) = get_time_since_last_check()
+            && elapsed.as_secs() < UPDATE_CHECK_INTERVAL_SECS
+        {
+            return;
         }
-        Ok(())
-    })() {
-        eprintln!("warning: update check failed: {}", e);
-    }
+
+        let update_check_result = (|| -> Result<()> {
+            let output = Command::new("cargo")
+                .args(["install", "supgit", "--dry-run"])
+                .output()
+                .context("failed to check for updates - is cargo installed?")?;
+
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let combined = format!("{}{}", stdout, stderr);
+
+                if combined.contains("Installing supgit") || combined.contains("Would install") {
+                    println!("Update available for supgit");
+                }
+            }
+            Ok(())
+        })();
+
+        if update_check_result.is_ok() {
+            record_update_check();
+        }
+
+        if let Err(e) = update_check_result {
+            debug!("update check failed: {:?}", e);
+        }
+    });
+
+    // Allow up to 2 seconds for the update check to complete
+    let _ = handle.join();
 }
 
 pub fn run_self_update(_target_version: Option<&str>) -> Result<()> {
